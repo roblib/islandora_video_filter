@@ -24,7 +24,7 @@ function islandora_video_filter_codec_info() {
     'callback' => 'islandora_video_filter_iframe',
 
     // HTML5 callback, for returning something that's device agnostic.
-    // We use a video js version
+    // Here we use a videojs version
     'html5_callback' => 'islandora_video_filter_html5',
 
     // Regexp can be an array. $video['codec']['delta'] will be set to the key.
@@ -40,14 +40,15 @@ function islandora_video_filter_codec_info() {
 /**
  * Implements hook_node_view_alter().
  *
- * Adds video js javascript.
+ * Adds video js javascript.  These js librarires should have been installed
+ * with the islandora_videojs module.
  *
  * We add the javascript here as Drupal caches the filter stuff so our
  * callback may not actually be called when a node is viewed.
  *
  * We check for a
- * format that starts with video so the filter would have to be saved as
- * video_filter or at least something that starts with video.
+ * format that that includes the word video.  So text formats for use with the
+ * islandora_video_filter should include the  word video or the js won't be added.
  *
  * @param array $build
  *   A renderable array representing the node content.
@@ -55,7 +56,7 @@ function islandora_video_filter_codec_info() {
 function islandora_video_filter_node_view_alter(&$build){
   // TODO find a better way to get filter information
   $format = $build['body']['#items'][0]['format'];
-  if(isset($format) && (substr($format,0,5) === 'video')) {
+  if(isset($format) && stristr($format, 'video')) {
     $videojs_path = libraries_get_path("video-js");
     drupal_add_js($videojs_path . "/video.js");
     drupal_add_css($videojs_path . '/video-js.css');
@@ -64,9 +65,6 @@ function islandora_video_filter_node_view_alter(&$build){
 
 /**
  * A callback function for the video_filter module. Outputs a html5 video element.
- *
- * This function depends uses the videojs libraries, these libraries should
- * be installed when you install the islandora_videojs module.
  *
  * @param array $video
  *   An array created byt the video_filter module
@@ -81,7 +79,6 @@ function islandora_video_filter_html5($video) {
   $video_height = $video['height'];
   $data_setup = empty($video['autoplay']) ? '{"preload": "true"}'
     : '{"preload": "true", "autoplay": "true"}' ;
-
 
   $output =
     <<<TAG
@@ -105,7 +102,7 @@ function islandora_video_filter_iframe($video) {
 }
 
 /**
- * Parses the video source url and returns a modified version that resolved to the TN
+ * Parses the video source url and returns a modified version that resolves to the TN
  * datastream.
  *
  * @param string $video_url
