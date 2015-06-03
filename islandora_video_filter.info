@@ -1,0 +1,7 @@
+name = Islandora Video Filter
+description = Add an islandora codec for use with the Video Filter module
+package = Islandora Filters
+dependencies[] = video_filter
+dependencies[] = islandora_videojs
+version = 7.x-dev
+core = 7.x

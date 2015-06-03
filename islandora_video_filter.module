@@ -1,0 +1,130 @@
+<?php
+
+/**
+ * @file
+ * Implementation of the Islandora video filter.
+ */
+
+/**
+ * Implements hook_codec_info()
+ *
+ * @return array
+ */
+function islandora_video_filter_codec_info() {
+  $codecs = array();
+  // You can offer multiple video formats in one module.
+  $codecs['islandora_video'] = array(
+    // Will be used some day in user information.
+    'name' => t('Islandora'),
+
+    // Special instructions for end users. Optional.
+    'instructions' => t('Use a url to an islandora video object\'s MP4 datastream.'),
+
+    // We currently have two html5 implementations as this below also does html5
+    'callback' => 'islandora_video_filter_iframe',
+
+    // HTML5 callback, for returning something that's device agnostic.
+    // We use a video js version
+    'html5_callback' => 'islandora_video_filter_html5',
+
+    // Regexp can be an array. $video['codec']['delta'] will be set to the key.
+    // TODO incorporate a valid PID regex /^([A-Za-z0-9]|-|\.)+:(([A-Za-z0-9])|-|\.|~|_|(%[0-9A-F]{2}))+$/
+    'regexp' => '/' . preg_quote($_SERVER['HTTP_HOST']) .'\/islandora\/object\/.*\/datastream\/MP4\/view/',
+
+    // Ratio for resizing within user-given width and height (ratio = width / height)
+    'ratio' => 620 / 400, //16 / 9,
+  );
+  return $codecs;
+}
+
+/**
+ * Implements hook_node_view_alter().
+ *
+ * Adds video js javascript.
+ *
+ * We add the javascript here as Drupal caches the filter stuff so our
+ * callback may not actually be called when a node is viewed.
+ *
+ * We check for a
+ * format that starts with video so the filter would have to be saved as
+ * video_filter or at least something that starts with video.
+ *
+ * @param array $build
+ *   A renderable array representing the node content.
+ */
+function islandora_video_filter_node_view_alter(&$build){
+  // TODO find a better way to get filter information
+  $format = $build['body']['#items'][0]['format'];
+  if(isset($format) && (substr($format,0,5) === 'video')) {
+    $videojs_path = libraries_get_path("video-js");
+    drupal_add_js($videojs_path . "/video.js");
+    drupal_add_css($videojs_path . '/video-js.css');
+  }
+}
+
+/**
+ * A callback function for the video_filter module. Outputs a html5 video element.
+ *
+ * This function depends uses the videojs libraries, these libraries should
+ * be installed when you install the islandora_videojs module.
+ *
+ * @param array $video
+ *   An array created byt the video_filter module
+ * @return string
+ *   The rendered output
+ */
+function islandora_video_filter_html5($video) {
+  $video_url =  $video['source'];//$_SERVER['REQUEST_SCHEME'] . '://' . $video['codec']['matches'][0];
+  $poster_url = islandora_video_filter_tn_url($video_url);
+  $video_id = str_replace(':', '-', islandora_video_filter_get_pid($video_url));
+  $video_width = $video['width'];
+  $video_height = $video['height'];
+  $data_setup = empty($video['autoplay']) ? '{"preload": "true"}'
+    : '{"preload": "true", "autoplay": "true"}' ;
+
+
+  $output =
+    <<<TAG
+  <video id="$video_id" class="video-js vjs-default-skin"
+  controls preload="auto" height="$video_width" width="$video_height" poster="$poster_url" data-setup='$data_setup'  > 
+  <source src="$video_url" type='video/mp4' /> 
+  <p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that
+  <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p> </video> 
+TAG;
+  return $output;
+}
+
+/**
+ * A callback function for the video_filter module.  This loads an html5 video
+ * element in an iframe.
+ *
+ */
+function islandora_video_filter_iframe($video) {
+  //$video['source'] = $_SERVER['REQUEST_SCHEME'] . '://' . $video['codec']['matches'][0];
+  return video_filter_iframe($video);
+}
+
+/**
+ * Parses the video source url and returns a modified version that resolved to the TN
+ * datastream.
+ *
+ * @param string $video_url
+ * @return mixed
+ */
+function islandora_video_filter_tn_url($video_url){
+  // TODO check for missing TNs
+  return str_replace('MP4/view', 'TN', $video_url);
+}
+
+/**
+ * Parses the video source url to return just the pid portion.
+ *
+ * @param string $video_url
+ * @return mixed|string
+ *   The pid.
+ */
+function islandora_video_filter_get_pid($video_url){
+  $id = substr($video_url, strpos($video_url, '/islandora/object/') + strlen('/islandora/object/'));
+  $id = str_replace('/datastream/MP4/view','', $id);
+  return $id;
+}
