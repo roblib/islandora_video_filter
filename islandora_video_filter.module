@@ -79,14 +79,10 @@ function islandora_video_filter_html5($video) {
   $video_height = $video['height'];
   $data_setup = empty($video['autoplay']) ? '{"preload": "true"}'
     : '{"preload": "true", "autoplay": "true"}' ;
-
+  // removed line breaks in video tag to try and stop some drupal filters from breaking our filter
   $output =
     <<<TAG
-  <video id="$video_id" class="video-js vjs-default-skin"
-  controls preload="auto" height="$video_width" width="$video_height" poster="$poster_url" data-setup='$data_setup'  > 
-  <source src="$video_url" type='video/mp4' /> 
-  <p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that
-  <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p> </video> 
+  <video id="$video_id" class="video-js vjs-default-skin" controls preload="auto" height="$video_height" width="$video_width" poster="$poster_url" data-setup='$data_setup'><source src="$video_url" type='video/mp4'/><p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p></video>
 TAG;
   return $output;
 }
