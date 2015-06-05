@@ -21,7 +21,7 @@ function islandora_video_filter_codec_info() {
     'instructions' => t('Use a url to an islandora video object\'s MP4 datastream.'),
 
     // We currently have two html5 implementations as this below also does html5
-    'callback' => 'islandora_video_filter_iframe',
+    'callback' => 'islandora_video_filter_html5',
 
     // HTML5 callback, for returning something that's device agnostic.
     // Here we use a videojs version
@@ -29,7 +29,10 @@ function islandora_video_filter_codec_info() {
 
     // Regexp can be an array. $video['codec']['delta'] will be set to the key.
     // TODO incorporate a valid PID regex /^([A-Za-z0-9]|-|\.)+:(([A-Za-z0-9])|-|\.|~|_|(%[0-9A-F]{2}))+$/
-    'regexp' => '/' . preg_quote($_SERVER['HTTP_HOST']) .'\/islandora\/object\/.*\/datastream\/MP4\/view/',
+    'regexp' => array(
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/.*\/datastream\/MP4\/view/',
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/.*\/datastream\/PROXY_MP3\/view/',
+    ),
 
     // Ratio for resizing within user-given width and height (ratio = width / height)
     'ratio' => 620 / 400, //16 / 9,
@@ -48,15 +51,17 @@ function islandora_video_filter_codec_info() {
  *
  * We check for a
  * format that that includes the word video.  So text formats for use with the
- * islandora_video_filter should include the  word video or the js won't be added.
+ * islandora_video_filter should include the word video if you want the videojs
+ * javascript to be loaded.  If the videojs javascript is not loaded you will
+ * end up with a normal html5 video tag
  *
  * @param array $build
  *   A renderable array representing the node content.
  */
-function islandora_video_filter_node_view_alter(&$build){
+function islandora_video_filter_node_view_alter(&$build) {
   // TODO find a better way to get filter information
   $format = $build['body']['#items'][0]['format'];
-  if(isset($format) && stristr($format, 'video')) {
+  if (isset($format) && stristr($format, 'video')) {
     $videojs_path = libraries_get_path("video-js");
     drupal_add_js($videojs_path . "/video.js");
     drupal_add_css($videojs_path . '/video-js.css');
@@ -64,17 +69,36 @@ function islandora_video_filter_node_view_alter(&$build){
 }
 
 /**
- * A callback function for the video_filter module. Outputs a html5 video element.
+ * A callback function for the video_filter module. Outputs a html5 video or audio element.
  *
  * @param array $video
- *   An array created byt the video_filter module
+ *   An array created bye the video_filter module
  * @return string
- *   The rendered output
+ *   A renderable string
  */
-function islandora_video_filter_html5($video) {
-  $video_url =  $video['source'];//$_SERVER['REQUEST_SCHEME'] . '://' . $video['codec']['matches'][0];
+function islandora_video_filter_html5($media) {
+  $media_url =  $media['source'];
+  return islandora_video_filter_is_audio($media_url) ?
+    islandora_video_filter_build_audio($media, $media_url) :
+    islandora_video_filter_build_video($media, $media_url);
+
+
+}
+
+/**
+ * Returns a html5 video element wrapped by videojs if the videojs javascript is loaded.
+ *
+ * The videojs javascript will be loaded if the text format identifier includes either
+ * vidoe or audio
+ *
+ * @param $video
+ * @param $video_url
+ * @return string
+ *   A renderable string
+ */
+function islandora_video_filter_build_video($video, $video_url) {
   $poster_url = islandora_video_filter_tn_url($video_url);
-  $video_id = str_replace(':', '-', islandora_video_filter_get_pid($video_url));
+  $video_id = str_replace(':', '-', islandora_video_filter_get_pid($video_url)) . '-video';
   $video_width = $video['width'];
   $video_height = $video['height'];
   $data_setup = empty($video['autoplay']) ? '{"preload": "true"}'
@@ -82,20 +106,36 @@ function islandora_video_filter_html5($video) {
   // removed line breaks in video tag to try and stop some drupal filters from breaking our filter
   $output =
     <<<TAG
-  <video id="$video_id" class="video-js vjs-default-skin" controls preload="auto" height="$video_height" width="$video_width" poster="$poster_url" data-setup='$data_setup'><source src="$video_url" type='video/mp4'/><p class="vjs-no-js">To view this video please enable JavaScript, and consider upgrading to a web browser that <a href="http://videojs.com/html5-video-support/" target="_blank">supports HTML5 video</a></p></video>
+  <video id="$video_id" class="video-js vjs-default-skin" controls preload="auto" height="$video_height" width="$video_width" poster="$poster_url" data-setup='$data_setup'><source src="$video_url" type='video/mp4'/></video>
 TAG;
   return $output;
 }
 
 /**
- * A callback function for the video_filter module.  This loads an html5 video
- * element in an iframe.
+ * Returns an html5 audio element
  *
+ * Currently does not support height, width, or autoplay.
+ *
+ * @param $audio
+ * @param $audio_url
+ * @return string
+ *   A renderable string
  */
-function islandora_video_filter_iframe($video) {
-  //$video['source'] = $_SERVER['REQUEST_SCHEME'] . '://' . $video['codec']['matches'][0];
-  return video_filter_iframe($video);
+function islandora_video_filter_build_audio($audio, $audio_url) {
+  $poster_url = islandora_video_filter_tn_url($audio_url);
+  $audio_id = str_replace(':', '-', islandora_video_filter_get_pid($audio_url)) . '-audio';
+  $audio_width = $audio['width'];
+  $audio_height = $audio['height'];
+  $data_setup = '{}';
+  $autoplay = empty($video['autoplay']) ? ""
+    : "autoplay";
+
+    $output = <<<TAG
+  <audio id="$audio_id" class="video-js vjs-default-skin" controls preload="auto" height="$audio_width" width="$audio_height" poster="$poster_url" data-setup='$data_setup'><source src="$audio_url" type='audio/mp3'/></audio>
+TAG;
+  return $output;
 }
+
 
 /**
  * Parses the video source url and returns a modified version that resolves to the TN
@@ -104,9 +144,12 @@ function islandora_video_filter_iframe($video) {
  * @param string $video_url
  * @return mixed
  */
-function islandora_video_filter_tn_url($video_url){
+function islandora_video_filter_tn_url($media_url){
   // TODO check for missing TNs
-  return str_replace('MP4/view', 'TN', $video_url);
+  $tn_url =  islandora_video_filter_is_audio($media_url) ?
+    str_replace('PROXY_MP3/view', 'TN', $media_url) :
+    str_replace('MP4/view', 'TN', $media_url);
+  return $tn_url;
 }
 
 /**
@@ -116,8 +159,14 @@ function islandora_video_filter_tn_url($video_url){
  * @return mixed|string
  *   The pid.
  */
-function islandora_video_filter_get_pid($video_url){
-  $id = substr($video_url, strpos($video_url, '/islandora/object/') + strlen('/islandora/object/'));
-  $id = str_replace('/datastream/MP4/view','', $id);
+function islandora_video_filter_get_pid($media_url){
+  $id = substr($media_url, strpos($media_url, '/islandora/object/') + strlen('/islandora/object/'));
+  $id = islandora_video_filter_is_audio($media_url) ?
+    str_replace('/datastream/PROXY_MP3/view', '', $id) :
+    str_replace('/datastream/MP4/view', '', $id);
   return $id;
+}
+
+function islandora_video_filter_is_audio($media_url){
+  return  (strstr($media_url, 'PROXY_MP3') === FALSE) ? FALSE : TRUE;
 }
