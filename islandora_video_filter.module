@@ -12,6 +12,7 @@
  */
 function islandora_video_filter_codec_info() {
   $codecs = array();
+  $pid_regex = "\b([A-Za-z0-9]|-|\.)+:(([A-Za-z0-9])|-|\.|~|_|(%[0-9A-F]{2}))+\b";
   // You can offer multiple video formats in one module.
   $codecs['islandora_video'] = array(
     // Will be used some day in user information.
@@ -28,10 +29,9 @@ function islandora_video_filter_codec_info() {
     'html5_callback' => 'islandora_video_filter_html5',
 
     // Regexp can be an array. $video['codec']['delta'] will be set to the key.
-    // TODO incorporate a valid PID regex /^([A-Za-z0-9]|-|\.)+:(([A-Za-z0-9])|-|\.|~|_|(%[0-9A-F]{2}))+$/
-    'regexp' => array(
-      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/.*\/datastream\/MP4\/view/',
-      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/.*\/datastream\/PROXY_MP3\/view/',
+   'regexp' => array(
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/' . $pid_regex . '\/datastream\/MP4\/view/',
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/' . $pid_regex . '\/datastream\/PROXY_MP3\/view/',
     ),
 
     // Ratio for resizing within user-given width and height (ratio = width / height)
@@ -60,11 +60,13 @@ function islandora_video_filter_codec_info() {
  */
 function islandora_video_filter_node_view_alter(&$build) {
   // TODO find a better way to get filter information
-  $format = $build['body']['#items'][0]['format'];
-  if (isset($format) && stristr($format, 'video')) {
-    $videojs_path = libraries_get_path("video-js");
-    drupal_add_js($videojs_path . "/video.js");
-    drupal_add_css($videojs_path . '/video-js.css');
+  //$format = $build['body']['#items'][0]['format'];
+  foreach ($build['body']['#items'] as $item) {
+    if (isset($item['format']) && stristr($item['format'], 'video')) {
+      $videojs_path = libraries_get_path("video-js");
+      drupal_add_js($videojs_path . "/video.js");
+      drupal_add_css($videojs_path . '/video-js.css');
+    }
   }
 }
 
@@ -89,7 +91,7 @@ function islandora_video_filter_html5($media) {
  * Returns a html5 video element wrapped by videojs if the videojs javascript is loaded.
  *
  * The videojs javascript will be loaded if the text format identifier includes either
- * vidoe or audio
+ * video
  *
  * @param $video
  * @param $video_url
@@ -114,7 +116,8 @@ TAG;
 /**
  * Returns an html5 audio element
  *
- * Currently does not support height, width, or autoplay.
+ * Currently does not support autoplay.  If using a version videojs
+ * below 4.9 height and width will not make any difference to the output.
  *
  * @param $audio
  * @param $audio_url
@@ -138,13 +141,14 @@ TAG;
 
 
 /**
- * Parses the video source url and returns a modified version that resolves to the TN
+ * Parses the source url and returns a modified version that resolves to the TN
  * datastream.
  *
- * @param string $video_url
+ * @param string $mdeia_url
+ *   An Islandora video (MP4) or audio (PROXY_MP3) source url
  * @return mixed
  */
-function islandora_video_filter_tn_url($media_url){
+function islandora_video_filter_tn_url($media_url) {
   // TODO check for missing TNs
   $tn_url =  islandora_video_filter_is_audio($media_url) ?
     str_replace('PROXY_MP3/view', 'TN', $media_url) :
@@ -159,7 +163,7 @@ function islandora_video_filter_tn_url($media_url){
  * @return mixed|string
  *   The pid.
  */
-function islandora_video_filter_get_pid($media_url){
+function islandora_video_filter_get_pid($media_url) {
   $id = substr($media_url, strpos($media_url, '/islandora/object/') + strlen('/islandora/object/'));
   $id = islandora_video_filter_is_audio($media_url) ?
     str_replace('/datastream/PROXY_MP3/view', '', $id) :
@@ -167,6 +171,14 @@ function islandora_video_filter_get_pid($media_url){
   return $id;
 }
 
-function islandora_video_filter_is_audio($media_url){
+/**
+ * Check if this is an islandora audio datastream url.
+ *
+ * @param string $media_url
+ *
+ * @return bool
+ *   TRUE if this is a PROXY_MP3 url.  FALSE otherwise.
+ */
+function islandora_video_filter_is_audio($media_url) {
   return  (strstr($media_url, 'PROXY_MP3') === FALSE) ? FALSE : TRUE;
 }
