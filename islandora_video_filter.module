@@ -53,7 +53,7 @@ function islandora_video_filter_codec_info() {
  * format that that includes the word video.  So text formats for use with the
  * islandora_video_filter should include the word video if you want the videojs
  * javascript to be loaded.  If the videojs javascript is not loaded you will
- * end up with a normal html5 video tag
+ * end up with a normal html5 video or audio tag
  *
  * @param array $build
  *   A renderable array representing the node content.
@@ -116,8 +116,8 @@ TAG;
 /**
  * Returns an html5 audio element
  *
- * Currently does not support autoplay.  If using a version videojs
- * below 4.9 height and width will not make any difference to the output.
+ * If using a version videojs below 4.9 height, width and autoplay
+ * will be ignored.
  *
  * @param $audio
  * @param $audio_url
@@ -129,7 +129,8 @@ function islandora_video_filter_build_audio($audio, $audio_url) {
   $audio_id = str_replace(':', '-', islandora_video_filter_get_pid($audio_url)) . '-audio';
   $audio_width = $audio['width'];
   $audio_height = $audio['height'];
-  $data_setup = '{}';
+  $data_setup = empty($audio['autoplay']) ? '{}'
+    : '{"autoplay": "true"}' ;
   $autoplay = empty($video['autoplay']) ? ""
     : "autoplay";
 
