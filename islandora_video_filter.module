@@ -30,8 +30,8 @@ function islandora_video_filter_codec_info() {
 
     // Regexp can be an array. $video['codec']['delta'] will be set to the key.
    'regexp' => array(
-      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/' . $pid_regex . '\/datastream\/MP4\/view/',
-      '/' . preg_quote($_SERVER['HTTP_HOST']) . '\/islandora\/object\/' . $pid_regex . '\/datastream\/PROXY_MP3\/view/',
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '.*\/islandora\/object\/' . $pid_regex . '\/datastream\/MP4\/view/',
+      '/' . preg_quote($_SERVER['HTTP_HOST']) . '.*\/islandora\/object\/' . $pid_regex . '\/datastream\/PROXY_MP3\/view/',
     ),
 
     // Ratio for resizing within user-given width and height (ratio = width / height)
