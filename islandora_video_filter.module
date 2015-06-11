@@ -60,12 +60,15 @@ function islandora_video_filter_codec_info() {
  */
 function islandora_video_filter_node_view_alter(&$build) {
   // TODO find a better way to get filter information
+  // TODO do we want to filter on something other than the word video? (islandora?)
   //$format = $build['body']['#items'][0]['format'];
-  foreach ($build['body']['#items'] as $item) {
-    if (isset($item['format']) && stristr($item['format'], 'video')) {
-      $videojs_path = libraries_get_path("video-js");
-      drupal_add_js($videojs_path . "/video.js");
-      drupal_add_css($videojs_path . '/video-js.css');
+  if(!empty($build['body']['#items'])) {
+    foreach ($build['body']['#items'] as $item) {
+      if (isset($item['format']) && stristr($item['format'], 'video')) {
+        $videojs_path = libraries_get_path("video-js");
+        drupal_add_js($videojs_path . "/video.js");
+        drupal_add_css($videojs_path . '/video-js.css');
+      }
     }
   }
 }
