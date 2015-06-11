@@ -42,7 +42,7 @@ This will override the default settings for this video.
 
 ### Audio 
 
-To embed an Islandora audio object follow the same pattern as described for Islandora video objects, but reference the MP3_PROXY datastream instead.
+To embed an Islandora audio object follow the same pattern as described for Islandora video objects, but reference the PROXY_MP3 datastream instead.
 
  [video:url]
 
